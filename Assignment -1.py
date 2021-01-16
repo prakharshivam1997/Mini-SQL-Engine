@@ -1,5 +1,5 @@
 import csv
-import pandas
+#import pandas
 import sys
 from prettytable import PrettyTable
 data={}
