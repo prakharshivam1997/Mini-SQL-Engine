@@ -4,6 +4,7 @@ from prettytable import PrettyTable
 data={}
 prPrint=PrettyTable()
 rList=['=','>','<','>=','<=']
+allColumns=[]
 oflag=False
 def extractTable(Slist):      
     i=1
@@ -99,6 +100,7 @@ def columnIndexer(metaList,tables):                                # creates dic
                     #print(t)
                     while(z<len(metaList) and metaList[z]!='<end_table>'):
                         colmap[metaList[z]]=x
+                        allColumns.append(metaList[z])
                         x=x+1
                         #print(metaList[z])
                         z=z+1
@@ -119,16 +121,21 @@ def columnExtractor(Slist):
         else:
             column.append(val)
     #print(column)
-    if(len(column)>1):
-        for x in column:
-            #print(x.split(','))
-            temp=x.split(',')
-            for t in temp:
-                if(t!='' and t!=' '):
-                    result.append(t)
+    if(len(column)==1 and column[0]=="*"):
+        for z in allColumns:
+            result.append(z)
         return result
     else:
-        return column[0].split(',')
+        if(len(column)>1):
+            for x in column:
+                #print(x.split(','))
+                temp=x.split(',')
+                for t in temp:
+                    if(t!='' and t!=' '):
+                        result.append(t)
+            return result
+        else:
+            return column[0].split(',')
     #print(result)
     return result
 
@@ -571,6 +578,7 @@ if __name__=='__main__':
     #print(len(tables))
     #alpha=list(df.iloc[3])
     #print(n)
+    print(allColumns)
     print(prPrint)
     
     #print(tables) 
