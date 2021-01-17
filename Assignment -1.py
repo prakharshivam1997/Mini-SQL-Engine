@@ -1,10 +1,10 @@
 import csv
-#import pandas
 import sys
 from prettytable import PrettyTable
 data={}
 prPrint=PrettyTable()
 rList=['=','>','<','>=','<=']
+oflag=False
 def extractTable(Slist):      
     i=1
     tables=[]
@@ -168,6 +168,7 @@ def aggregateFunc(mydict,type,col):                  #calculates value of aggreg
         mni=mydict[0][col]
         while i< count_row:
             mni=min(mni,mydict[i][col])
+            i=i+1
         return mni 
     
     
@@ -228,7 +229,7 @@ def columnPrinter(mydict,column,colmap,gflag):
                 print(val,end=" ")
             elif(c[0:3]=='min' or c[0:3]=='MIN'):
                 strx=aggregateColStrip(c[4:])
-                val=aggregateFunc(mydict,'max',colmap[strx])
+                val=aggregateFunc(mydict,'min',colmap[strx])
                 col_list.append(val)
                 print(val,end=" ")
             elif(c[0:5]=='count' or c[0:5]=="COUNT"):
@@ -276,7 +277,7 @@ def columnPrinter(mydict,column,colmap,gflag):
                     print(mydict[0][colmap[c]],end=" ")
                     col_list.append(mydict[0][colmap[c]])
                 prPrint.add_row(col_list)
-                #print('')
+                print('')
             else:
                 for i in range(count_row):
                     col_list.clear()
@@ -286,7 +287,7 @@ def columnPrinter(mydict,column,colmap,gflag):
                         col_list.append(mydict[i][colmap[c]])
                     print("")
                     prPrint.add_row(col_list)
-            #prPrint.add_row(col_list)
+            
 
 
 def conditionExtractor(Slist):
@@ -296,19 +297,45 @@ def conditionExtractor(Slist):
             break
         i=i+1
     j=i+1
-    #print(Slist[j])
+   
     condition=[]
     while (j< len(Slist)):
         condition.append(Slist[j])
         j=j+1
-    #print(condition)
+    
     return condition
+
+
+def dictAppend(newdict1,newdict2):
+    cnt=len(newdict1)
+    for i in range(len(newdict2)):
+        newdict1[cnt]=newdict2[i]
+        cnt=cnt+1
+    return newdict2
+
+
+def ifIsOr(Slist,mydict):
+    i=0
+    while i<len(Slist):
+        if(Slist[i]=="AND" or Slist[i]=="and"):
+            mydict=performRelational(Slist[i-1],Slist[i-2],mydict,colmap[Slist[i-3]])
+            mydict=performRelational(Slist[i+3],Slist[i+2],mydict,colmap[Slist[i+1]])
+          
+            return mydict
+        elif(Slist[i]=="OR" or Slist[i]=="or"):
+            newdict1={}
+            newdict1=performRelational(Slist[i-1],Slist[i-2],mydict,colmap[Slist[i-3]])
+            newdict2={}
+            newdict2=performRelational(Slist[i+3],Slist[i+2],mydict,colmap[Slist[i+1]])
+            return dictAppend(newdict1,newdict2)
+        i=i+1
+    return mydict
+
 
 def groupbyFunc(mydict,col):
     newdict=sorted(mydict.items(), key=lambda item: int(item[1][col]))
     #print(newdict)
     return newdict
-
 
 
 def performgroupBy(Slist,mydict,col,column):
@@ -424,7 +451,33 @@ def adjustCompile(sstr):
     #print(res)
     return res
 
-
+def orderbyFunc(Slist,mydict,colmap):
+    i=0
+    #print(mydict)
+    cnt=0
+    newdict={}
+    flag=False
+    while i<len(Slist):
+        if(Slist[i]=="order" and Slist[i+1]=="by"):
+            if(Slist[i+3]=="asc" or Slist[i+3]=="ASC"):
+                flag=True
+                col=colmap[Slist[i+2]]
+                ldict=sorted(mydict.items(), key=lambda item: int(item[1][col]))
+            if(Slist[i+3]=="desc" or Slist[i+3]=="DESC"):
+                flag=True
+                col=colmap[Slist[i+2]]
+                ldict=sorted(mydict.items(), key=lambda item: int(item[1][col]),reverse=True)
+        i=i+1
+    if(flag==True):
+        oflag=True
+        for z in range(len(ldict)):
+            #print(ldict[z][1])
+            newdict[cnt]=ldict[z][1]
+            cnt=cnt+1
+        #print(newdict)
+        return newdict
+    else:
+        return mydict                      
 
 if __name__=='__main__':
     xtr=[]
@@ -468,14 +521,35 @@ if __name__=='__main__':
     #print(condition)
     
     x=0
+    gflag=False
     for x in range(len(Slist)-1):
         #print('yes')
         if(Slist[x]=='group' and Slist[x+1]=='by'):
             #print()
+            gflag=True
+            #print("black1")
             mydict=groupbyFunc(data,colmap[Slist[x+2]])
             performgroupBy(Slist,mydict,colmap[Slist[x+2]],column)
+    if(gflag==False):
+        isorFlag=False
+        for k in Slist:
+            if(k=="and" or k=="AND" or k=="OR" or k=="or"):
+                mydict=ifIsOr(Slist,data)
+                #print("asdasd")
+                mydict=orderbyFunc(Slist,mydict,colmap)
+                columnPrinter(mydict,column,colmap,False)
+                isorFlag=True
 
-    #mydict=ifrelational(Slist,data,column,colmap)
+        relflag=False
+        if(isorFlag==False):
+            for i in range(len(Slist)):
+                for r in rList:
+                    if(Slist[i]==r):
+                        relflag=True
+                        break
+            if(relflag==True):
+                mydict=orderbyFunc(Slist,data,colmap)
+                mydict=ifrelational(Slist,mydict,column,colmap)
     #print(Slist)
     #print(mydict)
     #print(mydict[0][1][1])
@@ -483,7 +557,14 @@ if __name__=='__main__':
     #print(t[1])
     #print(mydict[0][0])
     #print(data)
-    #columnPrinter(mydict,column,colmap,False)
+            if(isorFlag==False and relflag==False):
+                #print("Yes")
+                mydict=orderbyFunc(Slist,data,colmap)
+                columnPrinter(mydict,column,colmap,False)
+            else:
+                #print("dass")
+                mydict=orderbyFunc(Slist,mydict,colmap)
+                columnPrinter(mydict,column,colmap,False)
     #print(tables[0])
     #print(data)
     #print(len(data))
