@@ -1,8 +1,9 @@
 import csv
 import sys
-from prettytable import PrettyTable
+#from prettytable import PrettyTable
 data={}
-prPrint=PrettyTable()
+finalList=[]
+#prPrint=PrettyTable()                         #prettyTable-----------------------------------------------------------
 rList=['=','>','<','>=','<=']
 allColumns=[]
 alltables=[]
@@ -10,7 +11,6 @@ oflag=False
 def extractTable(Slist):      
     i=1
     tables=[]
-    #print(Slist)
     while(i<len(Slist)):
         if(Slist[i]=="from"):
             break
@@ -23,7 +23,6 @@ def extractTable(Slist):
             if(Slist[i]!="," and Slist[i]!=''):
                 tables.append(Slist[i])
         i=i+1
-    print(tables)
     e_length=0
     for t in tables:
         if(t!='' and t!=" "):
@@ -40,10 +39,8 @@ def extractTable(Slist):
                     newtables.append(z[0:-1])
                 else:
                     newtables.append(z)
-        print(newtables)
+        
         return newtables
-    #print(tables,"asd")
-    #return tables 
 
 def alltableCreate(metaList):
     i=0
@@ -66,11 +63,30 @@ def tableChecker(tables):
             print("error in table name,does not match with metaTable,exiting :(")
             exit()
 
+def columnSlicer(str_now):
+    if(str_now[0:3]=='sum' or str_now=="SUM"):
+        return str_now[4:-1]
+    if(str_now[0:3]=='min' or str_now=="MIN"):
+        return str_now[4:-1]
+    if(str_now[0:3]=='max' or str_now=="MAX"):
+        return str_now[4:-1]
+    if(str_now[0:3]=='avg' or str_now=="AVG"):
+        return str_now[4:-1]
+    if(str_now[0:5]=="count" or str_now[0:5]=="COUNT"):
+        return str_now[6:-1]
+    else:
+        return str_now
+
+
 def columnChecker(column):
     for c in column:
         flag=False
+        if(c=="distinct" or c=="DISTINCT"):
+            continue
         for t in allColumns:
-            if(c==t):
+            str_now=c
+            str_now=columnSlicer(str_now)
+            if(str_now==t):
                 flag=True
         if(flag==False):
             print("Error in column names, not matching with Meta Table,exiting :(")
@@ -79,8 +95,13 @@ def columnChecker(column):
 
 def valueAppender(q1,q2):
     for i in range(len(q2)):
-        q1.append(int(q2[i]))
-    #print(q1)
+        if(isinstance(q2[i], int)):
+            q1.append(int(q2[i]))
+        else:
+            q1.append(float(q2[i]))
+
+
+
 
 def valueEraser(temp,line):
     i=0
@@ -90,7 +111,6 @@ def valueEraser(temp,line):
 def tableSizeMap(tables,sizeMap):
     x=0
     col_size=0
-    #print(len(tables))
     for x in range(len(tables)):
         with open(tables[x]+'.csv','r') as csv_file:
             csv_reader=csv.reader(csv_file)
@@ -109,8 +129,6 @@ def frameList(tables,reach,xtr,temp,sizeMap,cval):                              
                 valueAppender(fl,temp)
                 data[cval]=fl
                 cval=cval+1
-                #print(fl)
-                #print(cval)
                 xtr.append(fl)
             else:
                 frameList(tables,reach+1,xtr,temp,sizeMap,cval)
@@ -127,10 +145,7 @@ def frameCreater(tables,col):                         #frameCreater creates the 
     temp=[]
     xtr=[]
     sizeMap={}
-    #print(tables)
     tableSizeMap(tables,sizeMap)
-    #print(sizeMap[2])
-    #print(sizeMap)
     frameList(tables,0,xtr,temp,sizeMap,cval)
 
 
@@ -147,12 +162,10 @@ def columnIndexer(metaList,tables):                                # creates dic
             if(metaList[i]=='<begin_table>'):
                 if(t==metaList[i+1]):
                     z=i+2
-                #print(t)
                     while(z<len(metaList) and metaList[z]!='<end_table>'):
                         colmap[metaList[z]]=x
                         allColumns.append(metaList[z])
                         x=x+1
-                        #print(metaList[z])
                         z=z+1
             i=z+1
     return colmap
@@ -170,7 +183,6 @@ def columnExtractor(Slist):
             break
         else:
             column.append(val)
-    #print(column)
     if(len(column)==1 and column[0]=="*"):
         for z in allColumns:
             result.append(z)
@@ -178,7 +190,6 @@ def columnExtractor(Slist):
     else:
         if(len(column)>1):
             for x in column:
-                #print(x.split(','))
                 temp=x.split(',')
                 for t in temp:
                     if(t!='' and t!=' '):
@@ -186,7 +197,6 @@ def columnExtractor(Slist):
             return result
         else:
             return column[0].split(',')
-    #print(result)
     return result
 
 
@@ -194,27 +204,26 @@ def columnExtractor(Slist):
 
 def aggregateFunc(mydict,type,col):                  #calculates value of aggregate functions
     count_row=len(mydict)
-    sum=0
+    sum=float(0)
     i=0
-    #print(col)
     if(count_row==0):
         print("No value in data frame")
         exit()
     if(type=='sum'):
         while i<count_row:
-            print(mydict[i][col])            #remove it
-            sum=sum+mydict[i][col]
+            #print(mydict[i][col])            #remove it
+            sum=float(sum+mydict[i][col])
             i=i+1
         return sum
     elif(type=='AVG' or type=='avg'):
         n=0
-        sum=0
+        sum=float(0)
         i=0
         while i<count_row:
-            sum=sum+mydict[i][col]
+            sum=float(sum+mydict[i][col])
             n=n+1
             i=i+1
-        return sum/n
+        return float(sum/float(n))
     elif(type=='max' or type=="MAX"):
         maxi=mydict[0][col]
         i=1
@@ -260,91 +269,84 @@ def columnPrinter(mydict,column,colmap,gflag):
     count_row = len(mydict)
     if(count_row==0):
         return
-    #print(column)
-    #print(colmap[column[0]])
-    #print(colmap)
-    #print("Here")
     col_list=[]
     if(isAggregateFunc(column)==True):
-        #print("TE")
-        for c in column:
-            if(c[0:3]=='sum'):
-                #print(c[0:3])
-                strx=aggregateColStrip(c[4:])
-                #print(strx)
-                val=aggregateFunc(mydict,'sum',colmap[strx])
-                col_list.append(val)
-                print(val,end=" ")
-            elif(c[0:3]=='avg' or c[0:3]=='AVG'):
-                strx=aggregateColStrip(c[4:])
-                val=aggregateFunc(mydict,'avg',colmap[strx])
-                col_list.append(val)
-                print(val,end=" ")
-            elif(c[0:3]=='max' or c[0:3]=='MAX'):
-                strx=aggregateColStrip(c[4:])
-                val=aggregateFunc(mydict,'max',colmap[strx])
-                col_list.append(val)
-                print(val,end=" ")
-            elif(c[0:3]=='min' or c[0:3]=='MIN'):
-                strx=aggregateColStrip(c[4:])
-                val=aggregateFunc(mydict,'min',colmap[strx])
-                col_list.append(val)
-                print(val,end=" ")
-            elif(c[0:5]=='count' or c[0:5]=="COUNT"):
-                #print("Yes")
-                #print(mydict)
-                #print(len(mydict))
-                if(len(mydict)==0):
-                    continue
-                col_list.append(len(mydict))
-            else:
-                col_list.append(mydict[0][colmap[c]])
-            #print('')
-        prPrint.add_row(col_list)
+       
+        try:
+            for c in column:
+                if(c[0:3]=='sum'):
+                    strx=aggregateColStrip(c[4:])
+                    val=aggregateFunc(mydict,'sum',colmap[strx])
+                    col_list.append(val)
+                elif(c[0:3]=='avg' or c[0:3]=='AVG'):
+                    strx=aggregateColStrip(c[4:])
+                    val=aggregateFunc(mydict,'avg',colmap[strx])
+                    col_list.append(val)
+                    
+                elif(c[0:3]=='max' or c[0:3]=='MAX'):
+                    strx=aggregateColStrip(c[4:])
+                    val=aggregateFunc(mydict,'max',colmap[strx])
+                    col_list.append(val)
+                elif(c[0:3]=='min' or c[0:3]=='MIN'):
+                    strx=aggregateColStrip(c[4:])
+                    val=aggregateFunc(mydict,'min',colmap[strx])
+                    col_list.append(val)
+                elif(c[0:5]=='count' or c[0:5]=="COUNT"):
+                    if(len(mydict)==0):
+                        continue
+                    col_list.append(len(mydict))
+                else:
+                    col_list.append(mydict[0][colmap[c]])
+                #print('')
+            tempx=[]
+            valueAppender(tempx,col_list)
+            finalList.append(tempx)
+            #prPrint.add_row(col_list)                           # pretty table ---------------------------------
+        except:
+            print("error in query formatting,exiting, :(")
+            exit()
 
 
 
     else:
-        #print(c[0])
         if(column[0]=="distinct" or column[0]=="DISTINCT"):
             column=column[1:len(column)]
             mydata=[]
             for xd in mydict:
                 tlist=[]
-                #i=0
                 for i in column:
-                    #print(i,xd)
                     tlist.append(mydict[xd][colmap[i]])
                 mydata.append(tlist)
             unique_data = [list(x) for x in set(tuple(x) for x in mydata)]
             for v in unique_data:
                 col_list.clear()  
                 for z in range(len(column)):
-                    print(v[z],end=" ")
                     col_list.append(v[z])
-                print("")
-                #col_list.append(col_list)
-                prPrint.add_row(col_list)
+                tempx=[]
+                valueAppender(tempx,col_list)
+                finalList.append(tempx)
+                #prPrint.add_row(col_list)            # pretty table---------------------------------------------
                  
 
         else:
-            #print("asd")
-            #print(mydict)
             if gflag==True:
                 for c in column:
-                    print(mydict[0][colmap[c]],end=" ")
                     col_list.append(mydict[0][colmap[c]])
-                prPrint.add_row(col_list)
-                print('')
+                tempx=[]
+                valueAppender(tempx,col_list)
+                finalList.append(tempx)
+                #prPrint.add_row(col_list)           # prettyTable-----------------------------------------------
             else:
                 for i in range(count_row):
                     col_list.clear()
                     for c in column:
                         #print(c)
-                        print(mydict[i][colmap[c]],end=" ")
                         col_list.append(mydict[i][colmap[c]])
-                    print("")
-                    prPrint.add_row(col_list)
+                    #print("")
+                    temp=[]
+                    valueAppender(temp,col_list)
+                    finalList.append(temp)
+                    #prPrint.add_row(col_list)               # prettyTable------------------------------------
             
 
 
@@ -392,12 +394,10 @@ def ifIsOr(Slist,mydict):
 
 def groupbyFunc(mydict,col):
     newdict=sorted(mydict.items(), key=lambda item: int(item[1][col]))
-    #print(newdict)
     return newdict
 
 
 def performgroupBy(Slist,mydict,col,column):
-    #print(mydict)
     val=mydict[0][1][col]
     i=1
     xtr={}
@@ -406,11 +406,9 @@ def performgroupBy(Slist,mydict,col,column):
     while(i < len(mydict)):
         if(mydict[i][1][col]!=val):
             val=mydict[i][1][col]
-            #print(xtr)
+            
             xtr=ifrelational(Slist,xtr,column,colmap)
-            #print(xtr)
             columnPrinter(xtr,column,colmap,True)
-            #print("")
             xtr.clear()
             xtr[0]=mydict[i][1]
             cnt=1
@@ -419,11 +417,9 @@ def performgroupBy(Slist,mydict,col,column):
             cnt=cnt+1
         i=i+1
     if(len(xtr)>0):
-        #print(xtr)
         xtr=ifrelational(Slist,xtr,column,colmap)
-        #print(xtr)
         columnPrinter(xtr,column,colmap,True)
-        #print("")
+
 
 def ifrelational(Slist,mydict,column,colmap):
     for i in range(len(Slist)):
@@ -439,16 +435,11 @@ def ifrelational(Slist,mydict,column,colmap):
 def performRelational(operand,rop,mydict,col):
     cnt=0
     newdict={}
-    #print(mydict[0][col])
-    #print(len(mydict),operand)
     if(rop=='='):
-        #print("yes")
         for i in range(len(mydict)):
-            #print(i)
             if( mydict[i][col]==int(operand)):
                 newdict[cnt]=mydict[i]
                 cnt=cnt+1
-        #print(newdict)
         return newdict
     elif(rop=='>='):
         for i in range(len(mydict)):
@@ -463,12 +454,10 @@ def performRelational(operand,rop,mydict,col):
                 cnt=cnt+1
         return newdict
     elif(rop==">"):
-        #print(mydict)
         for i in range(len(mydict)):
             if(mydict[i][col]>int(operand)):
                 newdict[cnt]=mydict[i]
                 cnt=cnt+1
-        #print(newdict)
         return newdict
     if(rop=='<'):
         for i in range(len(mydict)):
@@ -484,7 +473,6 @@ def adjustCompile(sstr):
     n=len(res)
     i=0
     while i<n:
-        #print(i,res,n)
         if(res[i]=='>' or res[i]=='<') :
             if(res[i+1]!='='):
                 if(res[i-1]!=' ' and res[i+1]!=' '):
@@ -506,12 +494,10 @@ def adjustCompile(sstr):
                     n=n+2
                     i=i+2
         i=i+1
-    #print(res)
     return res
 
 def orderbyFunc(Slist,mydict,colmap):
     i=0
-    #print(mydict)
     cnt=0
     newdict={}
     flag=False
@@ -529,10 +515,8 @@ def orderbyFunc(Slist,mydict,colmap):
     if(flag==True):
         oflag=True
         for z in range(len(ldict)):
-            #print(ldict[z][1])
             newdict[cnt]=ldict[z][1]
             cnt=cnt+1
-        #print(newdict)
         return newdict
     else:
         return mydict                      
@@ -551,47 +535,43 @@ if __name__=='__main__':
     else:
         str=Slist[len(Slist)-1]
         if(str[len(str)-1]==';'):
-           # print(str)
             str=str[:len(str)-1]
-            #print(str)
             Slist.pop(len(Slist)-1)
             Slist.append(str)
     tables=extractTable(Slist)
     metaList=[]
     with open('metadata.txt','r') as csv_file:
-        #csv_reader=txt.reader(csv_file)
         metaList=csv_file.read().split('\n')
     alltableCreate(metaList)
     column=columnExtractor(Slist)
-    #print(column)
-    #print(allColumns)
-    #print(alltables)
     tableChecker(tables)
     colmap=columnIndexer(metaList,tables)
     columnChecker(column)
     frameCreater(tables,len(colmap))
     
     if(column[0]=='distinct' or column[0]=='DISTINCT'):
-        prPrint.field_names=column[1:]
+        temp=[]
+        #valueAppender(temp,column[1:])
+        for x in column[1:]:
+            temp.append(x)
+        finalList.append(temp)
+        #prPrint.field_names=column[1:]                  #prettyTable-----------------------------------------------
     else:
-        prPrint.field_names=column[0:]
-    #print(column)
-    #print(column)
-    #print(colmap)
-    #print(df)
+        temp=[]
+        #valueAppender(temp,column[0:])
+        for x in column[0:]:
+            temp.append(x)
+        finalList.append(temp)
+        #prPrint.field_names=column[0:]                  #prettyTable------------------------------------------------------
     condition=conditionExtractor(Slist)
     i=0
     mydict={}
-    #print(condition)
-    
     x=0
     gflag=False
     for x in range(len(Slist)-1):
-        #print('yes')
         if(Slist[x]=='group' and Slist[x+1]=='by'):
             #print()
             gflag=True
-            #print("black1")
             mydict=groupbyFunc(data,colmap[Slist[x+2]])
             cnt=0
             newdict={}
@@ -620,31 +600,13 @@ if __name__=='__main__':
             if(relflag==True):
                 mydict=orderbyFunc(Slist,data,colmap)
                 mydict=ifrelational(Slist,mydict,column,colmap)
-    #print(Slist)
-    #print(mydict)
-    #print(mydict[0][1][1])
-    #t=mydict[0]
-    #print(t[1])
-    #print(mydict[0][0])
-    #print(data)
             if(isorFlag==False and relflag==False):
-                #print("Yes")
                 mydict=orderbyFunc(Slist,data,colmap)
                 columnPrinter(mydict,column,colmap,False)
             else:
-                #print("dass")
                 mydict=orderbyFunc(Slist,mydict,colmap)
                 columnPrinter(mydict,column,colmap,False)
-    #print(tables[0])
-    #print(data)
-    #print(len(data))
-    #print(len(tables))
-    #alpha=list(df.iloc[3])
-    #print(n)
-    #print(tables)
-    #print(column)
-    print(prPrint)
-    
-    #print(tables) 
-#print(list(df.iloc[0]))
-#print(alpha)
+    for f in finalList:
+        for q in f:
+            print(q,end=" ")
+        print()
