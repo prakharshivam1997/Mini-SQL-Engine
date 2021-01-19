@@ -5,6 +5,7 @@ data={}
 prPrint=PrettyTable()
 rList=['=','>','<','>=','<=']
 allColumns=[]
+alltables=[]
 oflag=False
 def extractTable(Slist):      
     i=1
@@ -16,16 +17,64 @@ def extractTable(Slist):
         i=i+1
     i=i+1
     while i<len(Slist):
-        if(Slist[i]=='where'):
+        if(Slist[i]=='where' or Slist[i]=="group" or Slist[i]=="order"):
             break
         else:
-            tables.append(Slist[i])
+            if(Slist[i]!="," and Slist[i]!=''):
+                tables.append(Slist[i])
         i=i+1
-    tables=tables[0].split(',')
+    print(tables)
+    e_length=0
+    for t in tables:
+        if(t!='' and t!=" "):
+            e_length=e_length+1
+
+    if(e_length==1):
+        tables=tables[0].split(',')
+        return tables
+    else:
+        newtables=[]
+        for z in tables:
+            if(z!="" and z!=" "):
+                if(z[-1]==','):
+                    newtables.append(z[0:-1])
+                else:
+                    newtables.append(z)
+        print(newtables)
+        return newtables
     #print(tables,"asd")
-    return tables 
+    #return tables 
+
+def alltableCreate(metaList):
+    i=0
+    try:
+        for i in range(len(metaList)):
+            if(metaList[i]=="<begin_table>"):
+                alltables.append(metaList[i+1])
+    except:
+        print("Error in metatable,exiting :(")
+        exit()    
 
 
+def tableChecker(tables):
+    for t in tables:
+        flag=False
+        for z in alltables:
+            if(z==t):
+                flag=True
+        if(flag==False):
+            print("error in table name,does not match with metaTable,exiting :(")
+            exit()
+
+def columnChecker(column):
+    for c in column:
+        flag=False
+        for t in allColumns:
+            if(c==t):
+                flag=True
+        if(flag==False):
+            print("Error in column names, not matching with Meta Table,exiting :(")
+            exit()
 
 
 def valueAppender(q1,q2):
@@ -91,20 +140,21 @@ def columnIndexer(metaList,tables):                                # creates dic
     colmap={}
     i=0
     
-    while i<len(metaList):
-        z=i
-        if(metaList[i]=='<begin_table>'):
-            for t in tables:
+    for t in tables:
+        i=0
+        while i<len(metaList):
+            z=i
+            if(metaList[i]=='<begin_table>'):
                 if(t==metaList[i+1]):
                     z=i+2
-                    #print(t)
+                #print(t)
                     while(z<len(metaList) and metaList[z]!='<end_table>'):
                         colmap[metaList[z]]=x
                         allColumns.append(metaList[z])
                         x=x+1
                         #print(metaList[z])
                         z=z+1
-        i=z+1
+            i=z+1
     return colmap
     #print(colmap)
     
@@ -152,6 +202,7 @@ def aggregateFunc(mydict,type,col):                  #calculates value of aggreg
         exit()
     if(type=='sum'):
         while i<count_row:
+            print(mydict[i][col])            #remove it
             sum=sum+mydict[i][col]
             i=i+1
         return sum
@@ -505,15 +556,21 @@ if __name__=='__main__':
             #print(str)
             Slist.pop(len(Slist)-1)
             Slist.append(str)
-    #print(Slist)
     tables=extractTable(Slist)
     metaList=[]
     with open('metadata.txt','r') as csv_file:
         #csv_reader=txt.reader(csv_file)
         metaList=csv_file.read().split('\n')
-    colmap=columnIndexer(metaList,tables)
-    frameCreater(tables,len(colmap))
+    alltableCreate(metaList)
     column=columnExtractor(Slist)
+    #print(column)
+    #print(allColumns)
+    #print(alltables)
+    tableChecker(tables)
+    colmap=columnIndexer(metaList,tables)
+    columnChecker(column)
+    frameCreater(tables,len(colmap))
+    
     if(column[0]=='distinct' or column[0]=='DISTINCT'):
         prPrint.field_names=column[1:]
     else:
@@ -524,7 +581,7 @@ if __name__=='__main__':
     #print(df)
     condition=conditionExtractor(Slist)
     i=0
-    mydict=[]
+    mydict={}
     #print(condition)
     
     x=0
@@ -536,6 +593,12 @@ if __name__=='__main__':
             gflag=True
             #print("black1")
             mydict=groupbyFunc(data,colmap[Slist[x+2]])
+            cnt=0
+            newdict={}
+            for m in mydict:
+                newdict[cnt]=m
+                cnt=cnt+1
+            mydict=orderbyFunc(Slist,newdict,colmap)
             performgroupBy(Slist,mydict,colmap[Slist[x+2]],column)
     if(gflag==False):
         isorFlag=False
@@ -578,7 +641,8 @@ if __name__=='__main__':
     #print(len(tables))
     #alpha=list(df.iloc[3])
     #print(n)
-    print(allColumns)
+    #print(tables)
+    #print(column)
     print(prPrint)
     
     #print(tables) 
