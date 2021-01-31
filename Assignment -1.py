@@ -86,7 +86,7 @@ def columnChecker(column):
         for t in allColumns:
             str_now=c
             str_now=columnSlicer(str_now)
-            if(str_now==t):
+            if(str_now==t or str_now=="*" ):
                 flag=True
         if(flag==False):
             print("Error in column names, not matching with Meta Table,exiting :(")
@@ -95,10 +95,10 @@ def columnChecker(column):
 
 def valueAppender(q1,q2):
     for i in range(len(q2)):
-        if(isinstance(q2[i], int)):
-            q1.append(int(q2[i]))
+        if(isinstance(q2[i],float)):
+            q1.append(q2[i])
         else:
-            q1.append(float(q2[i]))
+            q1.append(int(q2[i]))
 
 
 
@@ -169,7 +169,6 @@ def columnIndexer(metaList,tables):                                # creates dic
                         z=z+1
             i=z+1
     return colmap
-    #print(colmap)
     
 
 
@@ -212,7 +211,7 @@ def aggregateFunc(mydict,type,col):                  #calculates value of aggreg
     if(type=='sum'):
         while i<count_row:
             #print(mydict[i][col])            #remove it
-            sum=float(sum+mydict[i][col])
+            sum=sum+mydict[i][col]
             i=i+1
         return sum
     elif(type=='AVG' or type=='avg'):
@@ -276,27 +275,50 @@ def columnPrinter(mydict,column,colmap,gflag):
             for c in column:
                 if(c[0:3]=='sum'):
                     strx=aggregateColStrip(c[4:])
-                    val=aggregateFunc(mydict,'sum',colmap[strx])
-                    col_list.append(val)
+                    try:
+                        val=aggregateFunc(mydict,'sum',colmap[strx])
+                        col_list.append(val)
+                    except:
+                        print("Error in column name,exiting :(")
+                        exit()
                 elif(c[0:3]=='avg' or c[0:3]=='AVG'):
                     strx=aggregateColStrip(c[4:])
-                    val=aggregateFunc(mydict,'avg',colmap[strx])
-                    col_list.append(val)
-                    
+                    try:
+                        val=aggregateFunc(mydict,'avg',colmap[strx])
+                        col_list.append(val)
+                    except:
+                        print("Error in column name,exiting :(")
+                        exit()
                 elif(c[0:3]=='max' or c[0:3]=='MAX'):
                     strx=aggregateColStrip(c[4:])
-                    val=aggregateFunc(mydict,'max',colmap[strx])
-                    col_list.append(val)
+                    try:
+                        val=aggregateFunc(mydict,'max',colmap[strx])
+                        col_list.append(val)
+                    except:
+                        print("Error in column name,exiting :(")
+                        exit()
                 elif(c[0:3]=='min' or c[0:3]=='MIN'):
                     strx=aggregateColStrip(c[4:])
-                    val=aggregateFunc(mydict,'min',colmap[strx])
-                    col_list.append(val)
+                    try:
+                        val=aggregateFunc(mydict,'min',colmap[strx])
+                        col_list.append(val)
+                    except:
+                        print("Error in column name,exiting :(")
+                        exit()
                 elif(c[0:5]=='count' or c[0:5]=="COUNT"):
-                    if(len(mydict)==0):
-                        continue
-                    col_list.append(len(mydict))
+                    try:
+                        if(len(mydict)==0):
+                            continue
+                        col_list.append(len(mydict))
+                    except:
+                        print("Error in count function,exiting :(")
+                        exit()
                 else:
-                    col_list.append(mydict[0][colmap[c]])
+                    try:
+                        col_list.append(mydict[0][colmap[c]])
+                    except:
+                        print("Error in column name,exiting :(")
+                        exit()
                 #print('')
             tempx=[]
             valueAppender(tempx,col_list)
@@ -337,11 +359,16 @@ def columnPrinter(mydict,column,colmap,gflag):
                 finalList.append(tempx)
                 #prPrint.add_row(col_list)           # prettyTable-----------------------------------------------
             else:
-                for i in range(count_row):
+                cnt=0
+                newdict={}
+                for key in mydict:
+                    newdict[cnt]=mydict[key]
+                    cnt=cnt+1
+                #print(newdict)
+                for i in range(len(newdict)):
                     col_list.clear()
                     for c in column:
-                        #print(c)
-                        col_list.append(mydict[i][colmap[c]])
+                        col_list.append(newdict[i][colmap[c]])
                     #print("")
                     temp=[]
                     valueAppender(temp,col_list)
@@ -367,27 +394,47 @@ def conditionExtractor(Slist):
 
 
 def dictAppend(newdict1,newdict2):
-    cnt=len(newdict1)
-    for i in range(len(newdict2)):
-        newdict1[cnt]=newdict2[i]
+    cnt=0
+    newdictx={}
+    for key in newdict1:
+        newdictx[cnt]=newdict1[key]
         cnt=cnt+1
-    return newdict2
+    for key in newdict2:
+        newdictx[cnt]=newdict2[key]
+        cnt=cnt+1
+    #print(newdict1)
+    return newdictx
 
 
-def ifIsOr(Slist,mydict):
+def ifIsOr(Slist,mydict,colmap):
     i=0
     while i<len(Slist):
         if(Slist[i]=="AND" or Slist[i]=="and"):
-            mydict=performRelational(Slist[i-1],Slist[i-2],mydict,colmap[Slist[i-3]])
-            mydict=performRelational(Slist[i+3],Slist[i+2],mydict,colmap[Slist[i+1]])
+            try:
+                #print(Slist[i-1])
+                mydict=performRelational(Slist[i-1],Slist[i-2],mydict,colmap[Slist[i-3]],colmap)
+                newdictx={}
+                newdictx=dictAppend(newdictx,mydict)
+                mydict=performRelational(Slist[i+3],Slist[i+2],newdictx,colmap[Slist[i+1]],colmap)
+            except:
+                print("Error in column name,exiting")
+                exit()
           
-            return mydict
+            return newdictx
         elif(Slist[i]=="OR" or Slist[i]=="or"):
-            newdict1={}
-            newdict1=performRelational(Slist[i-1],Slist[i-2],mydict,colmap[Slist[i-3]])
-            newdict2={}
-            newdict2=performRelational(Slist[i+3],Slist[i+2],mydict,colmap[Slist[i+1]])
-            return dictAppend(newdict1,newdict2)
+            try:
+                newdict1={}
+               
+                newdict1=performRelational(Slist[i-1],Slist[i-2],mydict,colmap[Slist[i-3]],colmap)
+                newdict2={}
+                newdict2=performRelational(Slist[i+3],Slist[i+2],mydict,colmap[Slist[i+1]],colmap)
+                if(len(newdict1)>len(newdict2)):
+                    return dictAppend(newdict1,newdict2)
+                else:
+                    return dictAppend(newdict1,newdict2)
+            except:
+                print("Error in column name111, exiting")
+                exit()
         i=i+1
     return mydict
 
@@ -398,22 +445,23 @@ def groupbyFunc(mydict,col):
 
 
 def performgroupBy(Slist,mydict,col,column):
-    val=mydict[0][1][col]
+    #print(mydict)
+    val=mydict[0][col]
     i=1
     xtr={}
-    xtr[0]=mydict[0][1]
+    xtr[0]=mydict[0]
     cnt=1
     while(i < len(mydict)):
-        if(mydict[i][1][col]!=val):
-            val=mydict[i][1][col]
+        if(mydict[i][col]!=val):
+            val=mydict[i][col]
             
             xtr=ifrelational(Slist,xtr,column,colmap)
             columnPrinter(xtr,column,colmap,True)
             xtr.clear()
-            xtr[0]=mydict[i][1]
+            xtr[0]=mydict[i]
             cnt=1
         else:
-            xtr[cnt]=mydict[i][1]
+            xtr[cnt]=mydict[i]
             cnt=cnt+1
         i=i+1
     if(len(xtr)>0):
@@ -425,45 +473,96 @@ def ifrelational(Slist,mydict,column,colmap):
     for i in range(len(Slist)):
         for r in rList:
             if(Slist[i]==r):
-                #print("yes",r)
-                mydict=performRelational(Slist[i+1],r,mydict,colmap[Slist[i-1]])
+                mydict=performRelational(Slist[i+1],r,mydict,colmap[Slist[i-1]],colmap)
     
     return mydict
     
 
 
-def performRelational(operand,rop,mydict,col):
+def performRelational(operand,rop,mydict,col,colmap):
+    #print("Ene")
+    oflag=False
+    for x in allColumns:
+        if(x==operand):
+            oflag=True
     cnt=0
+    #print(oflag)
     newdict={}
     if(rop=='='):
-        for i in range(len(mydict)):
-            if( mydict[i][col]==int(operand)):
-                newdict[cnt]=mydict[i]
+        try:
+            for i in range(len(mydict)):
+                if(oflag==True):
+                    if(mydict[i][col]==mydict[i][colmap[operand]]):
+                        newdict[cnt]=mydict[i]
+                else:
+                    if( mydict[i][col]==int(operand)):
+                        newdict[cnt]=mydict[i]
                 cnt=cnt+1
+        except:
+            print("Error in operand supplied.1 :(")
+            exit()
         return newdict
     elif(rop=='>='):
-        for i in range(len(mydict)):
-            if(mydict[i][col]>=int(operand)):
-                newdict[cnt]=mydict[i]
+        try:
+            for i in range(len(mydict)):
+                if(oflag==True):
+                    if(mydict[i][col]>=mydict[i][colmap[operand]]):
+                        newdict[cnt]=mydict[i]
+                else:
+                    if(mydict[i][col]>=int(operand)):
+                        newdict[cnt]=mydict[i]
                 cnt=cnt+1
+        except:
+            print("Improper in operand supplied.2 :(")
+            exit()
         return newdict
     elif(rop=="<="):
-        for i in range(len(mydict)):
-            if(mydict[i][col]<=int(operand)):
-                newdict[cnt]=mydict[i]
+        try:
+            for i in range(len(mydict)):
+                if(oflag==True):
+                    if(mydict[i][col]<=mydict[i][colmap[operand]]):
+                        newdict[cnt]=mydict[i]
+                else:
+                    if(mydict[i][col]<=int(operand)):
+                        newdict[cnt]=mydict[i]
                 cnt=cnt+1
+        except:
+            print("Improper in operand supplied.3 :(")
+            exit()
         return newdict
     elif(rop==">"):
-        for i in range(len(mydict)):
-            if(mydict[i][col]>int(operand)):
-                newdict[cnt]=mydict[i]
+        #print("ads")
+        try:
+            #print(len(mydict),col,operand)
+            for i in range(len(mydict)):
+                if(oflag==True):
+                    if(mydict[i][col]>mydict[i][colmap[operand]]):
+                        newdict[cnt]=mydict[i]
+                else:
+                    #print(operand,col,mydict[i][col])
+                    if(mydict[i][col]>int(operand)):
+                        newdict[cnt]=mydict[i]
                 cnt=cnt+1
+            #print(newdict)
+            #print(col)
+        except:
+            print("Improper in operand supplied.4 :(")
+            exit()
+        #print(newdict)
         return newdict
     if(rop=='<'):
-        for i in range(len(mydict)):
-            if(mydict[i][col]<int(operand)):
-                newdict[cnt]=mydict[i]
+        try:
+            for i in range(len(mydict)):
+                if(oflag==True):
+                    if(mydict[i][col]<mydict[i][colmap[operand]]):
+                        newdict[cnt]=mydict[i]
+                else:
+                    if(mydict[i][col]<int(operand)):
+                        newdict[cnt]=mydict[i]
                 cnt=cnt+1
+        except:
+            print("Improper in operand supplied.5 :(")
+            exit()
         return newdict
 
     
@@ -503,14 +602,18 @@ def orderbyFunc(Slist,mydict,colmap):
     flag=False
     while i<len(Slist):
         if(Slist[i]=="order" and Slist[i+1]=="by"):
-            if(Slist[i+3]=="asc" or Slist[i+3]=="ASC"):
-                flag=True
-                col=colmap[Slist[i+2]]
-                ldict=sorted(mydict.items(), key=lambda item: int(item[1][col]))
-            if(Slist[i+3]=="desc" or Slist[i+3]=="DESC"):
-                flag=True
-                col=colmap[Slist[i+2]]
-                ldict=sorted(mydict.items(), key=lambda item: int(item[1][col]),reverse=True)
+            try:
+                if(Slist[i+3]=="asc" or Slist[i+3]=="ASC"):
+                    flag=True
+                    col=colmap[Slist[i+2]]
+                    ldict=sorted(mydict.items(), key=lambda item: int(item[1][col]))
+                if(Slist[i+3]=="desc" or Slist[i+3]=="DESC"):
+                    flag=True
+                    col=colmap[Slist[i+2]]
+                    ldict=sorted(mydict.items(), key=lambda item: int(item[1][col]),reverse=True)
+            except:
+                print("error in order by, exiting :(")
+                exit()
         i=i+1
     if(flag==True):
         oflag=True
@@ -530,22 +633,28 @@ if __name__=='__main__':
     sstr=sys.argv[1]
     sstr=adjustCompile(sstr)
     Slist=sstr.split(" ")
+    commaflag=False
     if(Slist[len(Slist)-1]==';'):
         Slist.pop(len(Slist)-1)
+        commaflag=True
     else:
         str=Slist[len(Slist)-1]
         if(str[len(str)-1]==';'):
             str=str[:len(str)-1]
             Slist.pop(len(Slist)-1)
             Slist.append(str)
+            commaflag=True
+    if(commaflag==False):
+        print("Error, semicolon not applied at the end, exiting")
+        exit()
     tables=extractTable(Slist)
     metaList=[]
     with open('metadata.txt','r') as csv_file:
         metaList=csv_file.read().split('\n')
     alltableCreate(metaList)
-    column=columnExtractor(Slist)
     tableChecker(tables)
     colmap=columnIndexer(metaList,tables)
+    column=columnExtractor(Slist)
     columnChecker(column)
     frameCreater(tables,len(colmap))
     
@@ -571,21 +680,26 @@ if __name__=='__main__':
     for x in range(len(Slist)-1):
         if(Slist[x]=='group' and Slist[x+1]=='by'):
             #print()
-            gflag=True
-            mydict=groupbyFunc(data,colmap[Slist[x+2]])
-            cnt=0
-            newdict={}
-            for m in mydict:
-                newdict[cnt]=m
-                cnt=cnt+1
-            mydict=orderbyFunc(Slist,newdict,colmap)
-            performgroupBy(Slist,mydict,colmap[Slist[x+2]],column)
+            try:
+                gflag=True
+                mydict=groupbyFunc(data,colmap[Slist[x+2]])
+                cnt=0
+                newdict={}
+                for m in mydict:
+                    newdict[cnt]=m[1]
+                    cnt=cnt+1
+                    #print(m[1])
+                #print(newdict)
+                mydict=orderbyFunc(Slist,newdict,colmap)
+                performgroupBy(Slist,mydict,colmap[Slist[x+2]],column)
+            except:
+                print("Error in group by column names, exiting :(")
+                exit()
     if(gflag==False):
         isorFlag=False
         for k in Slist:
             if(k=="and" or k=="AND" or k=="OR" or k=="or"):
-                mydict=ifIsOr(Slist,data)
-                #print("asdasd")
+                mydict=ifIsOr(Slist,data,colmap)
                 mydict=orderbyFunc(Slist,mydict,colmap)
                 columnPrinter(mydict,column,colmap,False)
                 isorFlag=True
@@ -606,7 +720,14 @@ if __name__=='__main__':
             else:
                 mydict=orderbyFunc(Slist,mydict,colmap)
                 columnPrinter(mydict,column,colmap,False)
-    for f in finalList:
-        for q in f:
-            print(q,end=" ")
+    for f in range(len(finalList)):
+        if(f==0):
+            print('<',end=" ")
+        for q in range(len(finalList[f])):
+            if(q==len(finalList[f])-1):
+                print(finalList[f][q],end=" ")
+            else:
+                print(finalList[f][q],end=",")
+        if(f==0):
+            print('>',end=" ")
         print()
